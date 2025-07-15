@@ -263,12 +263,12 @@ export class OnchainPairScannerService {
         priceChange24h: 0,
         launchTime: new Date(),
         // Add metadata to track that this came from liquidity addition
-        liquidityInfo: {
-          type: "AddLiquidityETH",
-          amountToken: amountToken.toString(),
-          amountETH: amountETHMin.toString(),
-          provider: to,
-        },
+        // liquidityInfo: {
+        //   type: "AddLiquidityETH",
+        //   amountToken: amountToken.toString(),
+        //   amountETH: amountETHMin.toString(),
+        //   provider: to,
+        // },
       };
     } catch (error) {
       logger.warn("Failed to decode AddLiquidityETH log:", error);
@@ -327,12 +327,12 @@ export class OnchainPairScannerService {
         price: 0,
         priceChange24h: 0,
         launchTime: new Date(),
-        liquidityInfo: {
-          type: "AddLiquidity",
-          amountA: amountADesired.toString(),
-          amountB: amountBDesired.toString(),
-          provider: to,
-        },
+        // liquidityInfo: {
+        //   type: "AddLiquidity",
+        //   amountA: amountADesired.toString(),
+        //   amountB: amountBDesired.toString(),
+        //   provider: to,
+        // },
       };
     } catch (error) {
       logger.warn("Failed to decode AddLiquidity log:", error);
