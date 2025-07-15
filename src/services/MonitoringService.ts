@@ -1,24 +1,28 @@
 import { DexScreenerService } from "./DexScreenerService";
 import { CoinMarketCapService } from "./CoinMarketCapService";
-import { CoinGeckoService } from "./CoinGeckoService";
+import { CryptoPanicService } from "./CryptoPanicService";
 import { Coin, ICoin } from "../models/Coin";
 import { News, INews } from "../models/News";
 import { CoinData, NewsItem } from "../types";
 import { logger } from "../utils/logger";
+import { OnchainPairScannerService } from "./OnchainPairScannerService ";
 
 export class MonitoringService {
-  private dexScreener: DexScreenerService;
-  private coinMarketCap: CoinMarketCapService;
-  private coinGecko: CoinGeckoService;
+  //   private dexScreener: DexScreenerService;
+  //   private coinMarketCap: CoinMarketCapService;
+
+  private onchainScanner: OnchainPairScannerService;
+  private cryptoPanic: CryptoPanicService;
 
   constructor() {
-    this.dexScreener = new DexScreenerService();
-    this.coinMarketCap = new CoinMarketCapService();
-    this.coinGecko = new CoinGeckoService();
+    // this.dexScreener = new DexScreenerService();
+    // this.coinMarketCap = new CoinMarketCapService();
+    this.onchainScanner = new OnchainPairScannerService();
+    this.cryptoPanic = new CryptoPanicService();
   }
 
   async monitorNewLaunches(): Promise<void> {
-    logger.info("Starting new coin launch monitoring...");
+    logger.info("🚀 Starting new coin launch monitoring...");
 
     const networks: ("sui" | "bnb")[] = ["sui", "bnb"];
 
@@ -29,46 +33,56 @@ export class MonitoringService {
 
   private async monitorNetworkLaunches(network: "sui" | "bnb"): Promise<void> {
     try {
-      // Get data from all sources
-      const [dexScreenerResult, cmcResult] = await Promise.all([
-        this.dexScreener.getNewTokens(network),
-        this.coinMarketCap.getNewListings(),
-      ]);
+      const result =
+        network === "bnb"
+          ? await this.onchainScanner.getRecentBNBPairCreations()
+          : await this.onchainScanner.getRecentSuiPairs();
 
-      //geckoResult
-      //this.coinGecko.getNewCoins(),
-
-      const allCoins: CoinData[] = [];
-
-      if (dexScreenerResult.success && dexScreenerResult.data) {
-        allCoins.push(
-          ...dexScreenerResult.data.filter((coin) => coin.network === network)
-        );
+      if (!result.success || !result.data) {
+        logger.warn(`⚠️ No tokens found on ${network}: ${result.error}`);
+        return;
       }
 
-      if (cmcResult.success && cmcResult.data) {
-        allCoins.push(
-          ...cmcResult.data.filter((coin) => coin.network === network)
-        );
-      }
-
-      //   if (geckoResult.success && geckoResult.data) {
-      //     allCoins.push(
-      //       ...geckoResult.data.filter((coin) => coin.network === network)
-      //     );
-      //   }
-
-      // Filter and save new coins
-      const filteredCoins = this.filterCoins(allCoins);
+      const filteredCoins = this.filterCoins(result.data);
       await this.saveNewCoins(filteredCoins);
 
-      logger.info(
-        `Processed ${filteredCoins.length} coins for ${network} network`
-      );
+      logger.info(`✅ Saved ${filteredCoins.length} new coins from ${network}`);
     } catch (error) {
-      logger.error(`Error monitoring ${network} launches:`, error);
+      logger.error(`❌ Failed to monitor ${network}:`, error);
     }
   }
+
+  //   private async monitorNetworkLaunches(network: "sui" | "bnb"): Promise<void> {
+  //     try {
+  //       const [dexScreenerResult, cmcResult] = await Promise.all([
+  //         this.dexScreener.getNewTokens(network),
+  //         this.coinMarketCap.getNewListings(),
+  //       ]);
+
+  //       const allCoins: CoinData[] = [];
+
+  //       if (dexScreenerResult.success && dexScreenerResult.data) {
+  //         allCoins.push(
+  //           ...dexScreenerResult.data.filter((coin) => coin.network === network)
+  //         );
+  //       }
+
+  //       if (cmcResult.success && cmcResult.data) {
+  //         allCoins.push(
+  //           ...cmcResult.data.filter((coin) => coin.network === network)
+  //         );
+  //       }
+
+  //       const filteredCoins = this.filterCoins(allCoins);
+  //       await this.saveNewCoins(filteredCoins);
+
+  //       logger.info(
+  //         `✅ Processed ${filteredCoins.length} coins for ${network} network`
+  //       );
+  //     } catch (error) {
+  //       logger.error(`❌ Error monitoring ${network} launches:`, error);
+  //     }
+  //   }
 
   private filterCoins(coins: CoinData[]): CoinData[] {
     const minMarketCap = parseInt(process.env.MIN_MARKET_CAP || "10000");
@@ -96,53 +110,45 @@ export class MonitoringService {
           const coin = new Coin(coinData);
           await coin.save();
           logger.info(
-            `New coin saved: ${coinData.symbol} (${coinData.network})`
+            `🆕 New coin saved: ${coinData.symbol} (${coinData.network})`
           );
         }
       } catch (error) {
-        logger.error(`Error saving coin ${coinData.symbol}:`, error);
+        logger.error(`❌ Error saving coin ${coinData.symbol}:`, error);
       }
     }
   }
 
   async monitorNews(): Promise<void> {
-    logger.info("Starting news monitoring...");
+    logger.info("📰 Starting CryptoPanic news monitoring...");
 
-    const recentCoins = await Coin.find({
-      createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }, // Last 7 days
-    }).limit(20);
-
-    for (const coin of recentCoins) {
-      try {
-        const newsResult = await this.coinGecko.getNewsForCoin(coin.id);
-
-        if (newsResult.success && newsResult.data) {
-          await this.saveNews(newsResult.data, coin.network);
-        }
-      } catch (error) {
-        logger.error(`Error fetching news for coin ${coin.symbol}:`, error);
+    try {
+      const newsResult = await this.cryptoPanic.getLatestNews();
+      if (newsResult.success && newsResult.data) {
+        await this.saveNews(newsResult.data);
+        logger.info(
+          `✅ Saved ${newsResult.data.length} CryptoPanic news items`
+        );
+      } else {
+        logger.warn(`⚠️ CryptoPanic API failed: ${newsResult.error}`);
       }
+    } catch (error) {
+      logger.error("❌ Error fetching news from CryptoPanic:", error);
     }
   }
 
-  private async saveNews(
-    newsItems: NewsItem[],
-    network: "sui" | "bnb"
-  ): Promise<void> {
+  private async saveNews(newsItems: NewsItem[]): Promise<void> {
     for (const newsItem of newsItems) {
       try {
         const existingNews = await News.findOne({ id: newsItem.id });
 
         if (!existingNews) {
-          const news = new News({
-            ...newsItem,
-            network,
-          });
+          const news = new News(newsItem);
           await news.save();
-          logger.info(`New news saved: ${newsItem.title}`);
+          logger.info(`🆕 News saved: ${newsItem.title}`);
         }
       } catch (error) {
-        logger.error(`Error saving news ${newsItem.title}:`, error);
+        logger.error(`❌ Error saving news ${newsItem.title}:`, error);
       }
     }
   }

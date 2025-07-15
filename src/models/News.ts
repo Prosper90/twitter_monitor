@@ -17,13 +17,13 @@ export interface INews extends Document {
 const NewsSchema: Schema = new Schema(
   {
     id: { type: String, required: true, unique: true },
-    title: { type: String, required: true },
-    description: { type: String, required: true },
-    url: { type: String, required: true },
+    title: { type: String, required: false },
+    description: { type: String, required: false },
+    url: { type: String, required: false },
     publishedAt: { type: Date, required: true },
-    coinSymbol: { type: String, required: true },
-    network: { type: String, enum: ["sui", "bnb"], required: true },
-    source: { type: String, required: true },
+    coinSymbol: { type: String, required: false },
+    network: { type: String, enum: ["sui", "bnb"], required: false },
+    source: { type: String, required: false },
     isPosted: { type: Boolean, default: false },
   },
   {

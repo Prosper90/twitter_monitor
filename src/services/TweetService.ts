@@ -59,7 +59,7 @@ export class TweetService {
   private async processNewsTweets(): Promise<void> {
     const unpostedNews = await News.find({ isPosted: false })
       .sort({ publishedAt: -1 })
-      .limit(3);
+      .limit(1);
 
     for (const news of unpostedNews) {
       try {
