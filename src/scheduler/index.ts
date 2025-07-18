@@ -34,7 +34,7 @@ export class Scheduler {
     });
 
     // Process and post tweets every 2 minutes
-    cron.schedule("*/2 * * * *", async () => {
+    cron.schedule("*/20 * * * *", async () => {
       try {
         await this.tweetService.processPendingTweets();
       } catch (error) {
