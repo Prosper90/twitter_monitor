@@ -52,47 +52,79 @@ app.get("/api/tweets", async (req, res) => {
   }
 });
 
-app.get("/monitor_newcoin_launch", async (req, res) => {
-  // Monitor new coin launches every 5 minutes
-  scheduler.monitorCoin();
+app.get("/api/monitor_newcoin_launch", async (req, res) => {
+  try {
+    // Monitor new coin launches every 5 minutes
+    scheduler.monitorCoin();
 
-  res.status(200).json({
-    status: true,
-    message: "Worked",
-  });
+    res.status(200).json({
+      status: true,
+      message: "Worked",
+    });
+  } catch (error) {
+    logger.error("Endpoint error:", error);
+    res.status(500).json({
+      status: false,
+      message: "Error occurred during coin monitoring",
+    });
+  }
 });
 
 app.get("/monitor_news", async (req, res) => {
-  // Monitor news every 15 minutes
+  try {
+    // Monitor news every 15 minutes
 
-  scheduler.monitorNews();
+    scheduler.monitorNews();
 
-  res.status(200).json({
-    status: true,
-    message: "Worked",
-  });
+    res.status(200).json({
+      status: true,
+      message: "Worked",
+    });
+  } catch (error) {
+    logger.error("Endpoint error:", error);
+    res.status(500).json({
+      status: false,
+      message: "Error occurred during coin monitoring",
+    });
+  }
 });
 
 app.get("/process_posttweets", async (req, res) => {
-  // Process and post tweets every 2 minutes
+  try {
+    // Process and post tweets every 2 minutes
 
-  scheduler.processTweet();
+    scheduler.processTweet();
 
-  res.status(200).json({
-    status: true,
-    message: "Worked",
-  });
+    res.status(200).json({
+      status: true,
+      message: "Worked",
+    });
+  } catch (error) {
+    logger.error("Endpoint error:", error);
+    res.status(500).json({
+      status: false,
+      message: "Error occurred during coin monitoring",
+    });
+  }
 });
 
 app.get("/twitter_health", async (req, res) => {
-  // Health check every hour
+  try {
+    // Health check every hour
 
-  scheduler.checkHealth();
+    scheduler.checkHealth();
 
-  res.status(200).json({
-    status: true,
-    message: "Worked",
-  });
+    res.status(200).json({
+      status: true,
+      message: "Worked",
+    });
+  } catch (error) {
+    logger.error("Endpoint error:", error);
+    res.status(500).json({
+      status: false,
+      message: "Error occurred during coin monitoring",
+    });
+  }
 });
 
 // Error handling middleware
