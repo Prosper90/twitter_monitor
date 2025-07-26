@@ -70,7 +70,7 @@ app.get("/api/monitor_newcoin_launch", async (req, res) => {
   }
 });
 
-app.get("/monitor_news", async (req, res) => {
+app.get("/api/monitor_news", async (req, res) => {
   try {
     // Monitor news every 15 minutes
 
@@ -89,7 +89,7 @@ app.get("/monitor_news", async (req, res) => {
   }
 });
 
-app.get("/process_posttweets", async (req, res) => {
+app.get("/api/process_posttweets", async (req, res) => {
   try {
     // Process and post tweets every 2 minutes
 
@@ -108,7 +108,7 @@ app.get("/process_posttweets", async (req, res) => {
   }
 });
 
-app.get("/twitter_health", async (req, res) => {
+app.get("/api/twitter_health", async (req, res) => {
   try {
     // Health check every hour
 
