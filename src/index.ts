@@ -13,8 +13,8 @@ async function bootstrap(): Promise<void> {
     await connectDatabase();
 
     // Initialize scheduler
-    const scheduler = new Scheduler();
-    scheduler.start();
+    // const scheduler = new Scheduler();
+    // scheduler.start();
 
     // Start server
     const PORT = process.env.PORT || 3000;

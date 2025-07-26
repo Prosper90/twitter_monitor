@@ -1,5 +1,6 @@
 import express from "express";
 import { logger } from "./utils/logger";
+import scheduler from "./controller/SchedulerController";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,6 +50,49 @@ app.get("/api/tweets", async (req, res) => {
     logger.error("Error fetching tweets:", error);
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+app.get("/monitor_newcoin_launch", async (req, res) => {
+  // Monitor new coin launches every 5 minutes
+  scheduler.monitorCoin();
+
+  res.status(200).json({
+    status: true,
+    message: "Worked",
+  });
+});
+
+app.get("/monitor_news", async (req, res) => {
+  // Monitor news every 15 minutes
+
+  scheduler.monitorNews();
+
+  res.status(200).json({
+    status: true,
+    message: "Worked",
+  });
+});
+
+app.get("/process_posttweets", async (req, res) => {
+  // Process and post tweets every 2 minutes
+
+  scheduler.processTweet();
+
+  res.status(200).json({
+    status: true,
+    message: "Worked",
+  });
+});
+
+app.get("/twitter_health", async (req, res) => {
+  // Health check every hour
+
+  scheduler.checkHealth();
+
+  res.status(200).json({
+    status: true,
+    message: "Worked",
+  });
 });
 
 // Error handling middleware
