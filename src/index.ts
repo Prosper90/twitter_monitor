@@ -18,6 +18,7 @@ async function bootstrap(): Promise<void> {
 
     // Start server
     const PORT = process.env.PORT || 3000;
+    console.log(process.env.BNB_RPC_URL, "Shortttttttyyy");
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
     });

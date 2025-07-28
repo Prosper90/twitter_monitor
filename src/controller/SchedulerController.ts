@@ -1,14 +1,22 @@
 import { logger } from "../utils/logger";
-import { MonitoringService } from "@/services/MonitoringService";
-import { TweetService } from "@/services/TweetService";
+import { MonitoringService } from "../services/MonitoringService";
+// import { TweetService } from "../services/TweetService";
 
 class SchedulerController {
   private monitoringService: MonitoringService;
-  private tweetService: TweetService;
+  private _tweetService?: any; // Lazy loaded
 
   constructor() {
     this.monitoringService = new MonitoringService();
-    this.tweetService = new TweetService();
+    // this.tweetService = new TweetService();
+  }
+
+  private async getTweetService() {
+    if (!this._tweetService) {
+      const { TweetService } = await import("../services/TweetService");
+      this._tweetService = new TweetService();
+    }
+    return this._tweetService;
   }
 
   // Monitor new coin launches every 5 minutes
@@ -32,7 +40,8 @@ class SchedulerController {
   // Process and post tweets every 2 minutes
   processTweet = async () => {
     try {
-      await this.tweetService.processPendingTweets();
+      const tweetService = await this.getTweetService();
+      await tweetService.processPendingTweets();
     } catch (error) {
       logger.error("Error in tweet processing:", error);
     }
@@ -41,8 +50,9 @@ class SchedulerController {
   // Health check every hour
   checkHealth = async () => {
     try {
-      const isTwitterConnected =
-        await this.tweetService.verifyTwitterConnection();
+      const tweetService = await this.getTweetService();
+
+      const isTwitterConnected = await tweetService.verifyTwitterConnection();
       if (!isTwitterConnected) {
         logger.error("Twitter connection lost!");
       }
