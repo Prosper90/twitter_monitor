@@ -37,7 +37,7 @@ class SchedulerController {
     }
   };
 
-  // Process and post tweets every 2 minutes
+  // Process and post tweets every 20 minutes
   processTweet = async () => {
     try {
       const tweetService = await this.getTweetService();

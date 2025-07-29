@@ -1,6 +1,6 @@
 import { DexScreenerService } from "./DexScreenerService";
 import { CoinMarketCapService } from "./CoinMarketCapService";
-import { CryptoPanicService } from "./CryptoPanicService";
+import { EnhancedCryptoNewsService } from "./EnhancedCryptoNewsService";
 import { Coin, ICoin } from "../models/Coin";
 import { News, INews } from "../models/News";
 import { CoinData, NewsItem } from "../types";
@@ -12,13 +12,13 @@ export class MonitoringService {
   //   private coinMarketCap: CoinMarketCapService;
 
   private onchainScanner: OnchainPairScannerService;
-  private cryptoPanic: CryptoPanicService;
+  private enhancedNewsService: EnhancedCryptoNewsService;
 
   constructor() {
     // this.dexScreener = new DexScreenerService();
     // this.coinMarketCap = new CoinMarketCapService();
     this.onchainScanner = new OnchainPairScannerService();
-    this.cryptoPanic = new CryptoPanicService();
+    this.enhancedNewsService = new EnhancedCryptoNewsService();
   }
 
   async monitorNewLaunches(): Promise<void> {
@@ -120,24 +120,80 @@ export class MonitoringService {
   }
 
   async monitorNews(): Promise<void> {
-    logger.info("📰 Starting CryptoPanic news monitoring...");
+    logger.info("📰 Starting enhanced crypto news monitoring...");
 
     try {
-      const newsResult = await this.cryptoPanic.getLatestNews();
+      const newsResult = await this.enhancedNewsService.getAllNews();
+
+      if (newsResult.success && newsResult.data) {
+        const { general, sui, combined } = newsResult.data;
+
+        // Save general crypto news
+        if (general.length > 0) {
+          await this.saveNews(general);
+          logger.info(`✅ Saved ${general.length} general crypto news items`);
+        }
+
+        // Save SUI-specific news
+        if (sui.length > 0) {
+          await this.saveNews(sui);
+          logger.info(`✅ Saved ${sui.length} SUI-specific news items`);
+        }
+
+        logger.info(`📊 Total news items processed: ${combined.length}`);
+        logger.info(
+          `📈 General news: ${general.length} | SUI news: ${sui.length}`
+        );
+      } else {
+        logger.warn(`⚠️ Enhanced news service failed: ${newsResult.error}`);
+      }
+    } catch (error) {
+      logger.error("❌ Error fetching news from enhanced service:", error);
+    }
+  }
+
+  // Alternative method to monitor only SUI news if needed
+  async monitorSuiNews(): Promise<void> {
+    logger.info("📰 Starting SUI-specific news monitoring...");
+
+    try {
+      const newsResult = await this.enhancedNewsService.getSuiNews();
+
+      if (newsResult.success && newsResult.data) {
+        await this.saveNews(newsResult.data);
+        logger.info(`✅ Saved ${newsResult.data.length} SUI news items`);
+      } else {
+        logger.warn(`⚠️ SUI news monitoring failed: ${newsResult.error}`);
+      }
+    } catch (error) {
+      logger.error("❌ Error fetching SUI news:", error);
+    }
+  }
+
+  // Alternative method to monitor only general crypto news if needed
+  async monitorGeneralNews(): Promise<void> {
+    logger.info("📰 Starting general crypto news monitoring...");
+
+    try {
+      const newsResult = await this.enhancedNewsService.getCryptoPanicNews();
+
       if (newsResult.success && newsResult.data) {
         await this.saveNews(newsResult.data);
         logger.info(
-          `✅ Saved ${newsResult.data.length} CryptoPanic news items`
+          `✅ Saved ${newsResult.data.length} general crypto news items`
         );
       } else {
-        logger.warn(`⚠️ CryptoPanic API failed: ${newsResult.error}`);
+        logger.warn(`⚠️ General news monitoring failed: ${newsResult.error}`);
       }
     } catch (error) {
-      logger.error("❌ Error fetching news from CryptoPanic:", error);
+      logger.error("❌ Error fetching general crypto news:", error);
     }
   }
 
   private async saveNews(newsItems: NewsItem[]): Promise<void> {
+    let savedCount = 0;
+    let skippedCount = 0;
+
     for (const newsItem of newsItems) {
       try {
         const existingNews = await News.findOne({ id: newsItem.id });
@@ -145,11 +201,81 @@ export class MonitoringService {
         if (!existingNews) {
           const news = new News(newsItem);
           await news.save();
-          logger.info(`🆕 News saved: ${newsItem.title}`);
+          savedCount++;
+          logger.info(
+            `🆕 News saved: ${newsItem.title} [${newsItem.source}] [${newsItem.network}]`
+          );
+        } else {
+          skippedCount++;
         }
       } catch (error) {
-        logger.error(`❌ Error saving news ${newsItem.title}:`, error);
+        logger.error(`❌ Error saving news "${newsItem.title}":`, error);
       }
+    }
+
+    if (skippedCount > 0) {
+      logger.info(`📝 Skipped ${skippedCount} duplicate news items`);
+    }
+
+    logger.info(
+      `💾 News save summary: ${savedCount} new, ${skippedCount} duplicates`
+    );
+  }
+
+  // Method to run comprehensive monitoring (coins + news)
+  async runFullMonitoring(): Promise<void> {
+    logger.info("🔄 Starting comprehensive monitoring cycle...");
+
+    try {
+      // Monitor new coin launches
+      await this.monitorNewLaunches();
+
+      // Monitor news from all sources
+      await this.monitorNews();
+
+      logger.info("✅ Comprehensive monitoring cycle completed successfully");
+    } catch (error) {
+      logger.error("❌ Error during comprehensive monitoring:", error);
+    }
+  }
+
+  // Method for targeted monitoring with options
+  async runCustomMonitoring(options: {
+    includeCoins?: boolean;
+    includeGeneralNews?: boolean;
+    includeSuiNews?: boolean;
+    networks?: ("sui" | "bnb")[];
+  }): Promise<void> {
+    const {
+      includeCoins = true,
+      includeGeneralNews = true,
+      includeSuiNews = true,
+      networks = ["sui", "bnb"],
+    } = options;
+
+    logger.info("🎯 Starting custom monitoring with options:", options);
+
+    try {
+      if (includeCoins) {
+        for (const network of networks) {
+          await this.monitorNetworkLaunches(network);
+        }
+      }
+
+      if (includeGeneralNews && includeSuiNews) {
+        // Get both general and SUI news
+        await this.monitorNews();
+      } else if (includeGeneralNews) {
+        // Get only general news
+        await this.monitorGeneralNews();
+      } else if (includeSuiNews) {
+        // Get only SUI news
+        await this.monitorSuiNews();
+      }
+
+      logger.info("✅ Custom monitoring completed successfully");
+    } catch (error) {
+      logger.error("❌ Error during custom monitoring:", error);
     }
   }
 }
