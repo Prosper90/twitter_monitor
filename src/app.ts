@@ -92,18 +92,27 @@ app.get("/api/monitor_news", async (req, res) => {
 app.get("/api/process_posttweets", async (req, res) => {
   try {
     // Process and post tweets every 2 minutes
+    const result = await scheduler.processTweet();
 
-    scheduler.processTweet();
-
-    res.status(200).json({
-      status: true,
-      message: "Worked",
-    });
-  } catch (error) {
+    if (result && result.success) {
+      res.status(200).json({
+        status: true,
+        message: "Tweet processing completed successfully",
+        data: result.data,
+      });
+    } else {
+      res.status(500).json({
+        status: false,
+        message: "Tweet processing failed",
+        error: result?.error || "Unknown error",
+      });
+    }
+  } catch (error: any) {
     logger.error("Endpoint error:", error);
     res.status(500).json({
       status: false,
-      message: "Error occurred during coin monitoring",
+      message: "Error occurred during tweet processing",
+      error: error.message,
     });
   }
 });

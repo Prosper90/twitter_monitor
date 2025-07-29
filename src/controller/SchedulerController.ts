@@ -12,11 +12,15 @@ class SchedulerController {
   }
 
   private async getTweetService() {
-    if (!this._tweetService) {
-      const { TweetService } = await import("../services/TweetService");
-      this._tweetService = new TweetService();
+    try {
+      if (!this._tweetService) {
+        const { TweetService } = await import("../services/TweetService");
+        this._tweetService = new TweetService();
+      }
+      return this._tweetService;
+    } catch (error) {
+      throw error;
     }
-    return this._tweetService;
   }
 
   // Monitor new coin launches every 5 minutes
@@ -41,9 +45,14 @@ class SchedulerController {
   processTweet = async () => {
     try {
       const tweetService = await this.getTweetService();
-      await tweetService.processPendingTweets();
-    } catch (error) {
+      const result = await tweetService.processPendingTweets();
+      return result;
+    } catch (error: any) {
       logger.error("Error in tweet processing:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
     }
   };
 

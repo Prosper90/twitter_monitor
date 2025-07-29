@@ -7,19 +7,29 @@ import { logger } from "../utils/logger";
 
 export class TweetService {
   private twitter: TwitterClient;
+  private rateLimitTracker = {
+    tweetsPosted: 0,
+    windowStart: Date.now(),
+    windowDuration: 15 * 60 * 1000, // 15 minutes
+    maxTweetsPerWindow: 50, // Twitter allows 50 tweets per 15 minutes
+  };
 
   constructor() {
     this.twitter = new TwitterClient();
   }
 
   async processPendingTweets(): Promise<void> {
-    logger.info("Processing pending tweets...");
+    try {
+      logger.info("Processing pending tweets...");
 
-    // Process new coin launches
-    await this.processNewCoinTweets();
+      // Process new coin launches
+      await this.processNewCoinTweets();
 
-    // Process news tweets
-    await this.processNewsTweets();
+      // Process news tweets
+      await this.processNewsTweets();
+    } catch (error) {
+      throw error;
+    }
   }
 
   private async processNewCoinTweets(): Promise<void> {
