@@ -104,7 +104,19 @@ export class TweetService {
     const networkEmoji = coin.network === "sui" ? "🌊" : "🚀";
     const priceChangeEmoji = coin.priceChange24h >= 0 ? "📈" : "📉";
 
-    let tweet = `${networkEmoji} NEW LAUNCH ALERT!\n\n`;
+    // Add timestamp or random element for uniqueness
+    // const timestamp = new Date().toLocaleTimeString();
+
+    const variations = [
+      "🚨 BREAKING: New token launch detected!",
+      "⚡ FRESH LAUNCH ALERT!",
+      "🎯 NEW TOKEN SPOTTED!",
+      "💫 LAUNCH NOTIFICATION!",
+    ];
+    const randomIntro =
+      variations[Math.floor(Math.random() * variations.length)];
+
+    let tweet = `${networkEmoji} ${randomIntro} \n\n`;
     tweet += `💎 ${coin.name} ($${coin.symbol})\n`;
     tweet += `🏷️ ${coin.network.toUpperCase()} Network\n`;
     tweet += `💰 Price: $${coin.price.toFixed(6)}\n`;
@@ -125,8 +137,9 @@ export class TweetService {
 
   private generateNewsTweet(news: INews): string {
     const networkEmoji = news.network === "sui" ? "🌊" : "🚀";
+    const timestamp = new Date().toLocaleTimeString();
 
-    let tweet = `${networkEmoji} CRYPTO NEWS ALERT!\n\n`;
+    let tweet = `${networkEmoji} CRYPTO NEWS ALERT! [${timestamp}]\n\n`;
     tweet += `📰 ${news.title}\n\n`;
     tweet += `🪙 ${news.coinSymbol.toUpperCase()}\n`;
     tweet += `🏷️ ${news.network.toUpperCase()} Network\n`;

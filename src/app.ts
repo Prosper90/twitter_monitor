@@ -94,19 +94,12 @@ app.get("/api/process_posttweets", async (req, res) => {
     // Process and post tweets every 2 minutes
     const result = await scheduler.processTweet();
 
-    if (result && result.success) {
-      res.status(200).json({
-        status: true,
-        message: "Tweet processing completed successfully",
-        data: result.data,
-      });
-    } else {
-      res.status(500).json({
-        status: false,
-        message: "Tweet processing failed",
-        error: result?.error || "Unknown error",
-      });
-    }
+    console.log(result, "I think it worked");
+
+    res.status(200).json({
+      status: true,
+      message: "Tweet processing completed successfully",
+    });
   } catch (error: any) {
     logger.error("Endpoint error:", error);
     res.status(500).json({

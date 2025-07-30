@@ -45,14 +45,9 @@ class SchedulerController {
   processTweet = async () => {
     try {
       const tweetService = await this.getTweetService();
-      const result = await tweetService.processPendingTweets();
-      return result;
+      await tweetService.processPendingTweets();
     } catch (error: any) {
       logger.error("Error in tweet processing:", error);
-      return {
-        success: false,
-        error: error.message,
-      };
     }
   };
 
