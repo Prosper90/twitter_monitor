@@ -196,18 +196,24 @@ export class MonitoringService {
 
     for (const newsItem of newsItems) {
       try {
-        const existingNews = await News.findOne({ id: newsItem.id });
+        const existingNews = await News.findOne({
+          title: newsItem.title.trim(),
+        });
 
-        if (!existingNews) {
-          const news = new News(newsItem);
-          await news.save();
-          savedCount++;
-          logger.info(
-            `🆕 News saved: ${newsItem.title} [${newsItem.source}] [${newsItem.network}]`
-          );
-        } else {
+        if (existingNews) {
           skippedCount++;
+          logger.info(
+            `⚠️ Duplicate news skipped: ${newsItem.title.substring(0, 50)}...`
+          );
+          continue;
         }
+
+        const news = new News(newsItem);
+        await news.save();
+        savedCount++;
+        logger.info(
+          `🆕 News saved: ${newsItem.title} [${newsItem.source}] [${newsItem.network}]`
+        );
       } catch (error) {
         logger.error(`❌ Error saving news "${newsItem.title}":`, error);
       }
