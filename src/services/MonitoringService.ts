@@ -1,24 +1,59 @@
-import { DexScreenerService } from "./DexScreenerService";
-import { CoinMarketCapService } from "./CoinMarketCapService";
-import { EnhancedCryptoNewsService } from "./EnhancedCryptoNewsService";
+// import { DexScreenerService } from "./DexScreenerService";
+// import { CoinMarketCapService } from "./CoinMarketCapService";
+// import { EnhancedCryptoNewsService } from "./EnhancedCryptoNewsService";
 import { Coin, ICoin } from "../models/Coin";
 import { News, INews } from "../models/News";
 import { CoinData, NewsItem } from "../types";
 import { logger } from "../utils/logger";
-import { OnchainPairScannerService } from "./OnchainPairScannerService ";
+// import { OnchainPairScannerService } from "./OnchainPairScannerService ";
 
 export class MonitoringService {
   //   private dexScreener: DexScreenerService;
   //   private coinMarketCap: CoinMarketCapService;
 
-  private onchainScanner: OnchainPairScannerService;
-  private enhancedNewsService: EnhancedCryptoNewsService;
+  private _onchainScanner: any;
+  private _enhancedNewsService: any;
 
   constructor() {
     // this.dexScreener = new DexScreenerService();
     // this.coinMarketCap = new CoinMarketCapService();
-    this.onchainScanner = new OnchainPairScannerService();
-    this.enhancedNewsService = new EnhancedCryptoNewsService();
+    // this.onchainScanner = new OnchainPairScannerService();
+    // this.enhancedNewsService = new EnhancedCryptoNewsService();
+    logger.info(
+      "🚀 MonitoringService created (services will be loaded on demand)"
+    );
+  }
+
+  private async getOnchainScanner() {
+    try {
+      if (!this._onchainScanner) {
+        const { OnchainPairScannerService } = await import(
+          "./OnchainPairScannerService "
+        );
+        this._onchainScanner = new OnchainPairScannerService();
+        logger.info("✅ OnchainPairScannerService loaded on demand");
+      }
+      return this._onchainScanner;
+    } catch (error) {
+      logger.error("❌ Failed to load OnchainPairScannerService:", error);
+      throw error;
+    }
+  }
+
+  private async getEnhancedNewsService() {
+    try {
+      if (!this._enhancedNewsService) {
+        const { EnhancedCryptoNewsService } = await import(
+          "./EnhancedCryptoNewsService"
+        );
+        this._enhancedNewsService = new EnhancedCryptoNewsService();
+        logger.info("✅ EnhancedCryptoNewsService loaded on demand");
+      }
+      return this._enhancedNewsService;
+    } catch (error) {
+      logger.error("❌ Failed to load EnhancedCryptoNewsService:", error);
+      throw error;
+    }
   }
 
   async monitorNewLaunches(): Promise<void> {
@@ -33,20 +68,25 @@ export class MonitoringService {
 
   private async monitorNetworkLaunches(network: "sui" | "bnb"): Promise<void> {
     try {
+      logger.info(`🔍 Monitoring ${network.toUpperCase()} network...`);
+
+      const onchainScanner = await this.getOnchainScanner();
+
       const result =
         network === "bnb"
-          ? await this.onchainScanner.getRecentBNBPairCreations()
-          : await this.onchainScanner.getRecentSuiPairs();
+          ? await onchainScanner.getRecentBNBPairCreations()
+          : await onchainScanner.getRecentSuiPairs();
 
       if (!result.success || !result.data) {
         logger.warn(`⚠️ No tokens found on ${network}: ${result.error}`);
         return;
       }
 
-      const filteredCoins = this.filterCoins(result.data);
-      await this.saveNewCoins(filteredCoins);
+      // For newly detected pairs from onchain scanner, use special filtering
+      const filteredCoins = this.filterNewPairs(result.data);
+      const savedCount = await this.saveNewCoins(filteredCoins);
 
-      logger.info(`✅ Saved ${filteredCoins.length} new coins from ${network}`);
+      logger.info(`✅ Saved ${savedCount} new coins from ${network}`);
     } catch (error) {
       logger.error(`❌ Failed to monitor ${network}:`, error);
     }
@@ -98,7 +138,23 @@ export class MonitoringService {
     );
   }
 
-  private async saveNewCoins(coins: CoinData[]): Promise<void> {
+  // Special filter for newly detected pairs (allows zero volume/marketcap)
+  private filterNewPairs(coins: CoinData[]): CoinData[] {
+    // For new pairs, we only require basic data integrity
+    // We don't filter by volume/marketcap since new pairs start at 0
+    return coins.filter(
+      (coin) =>
+        coin.contractAddress &&
+        coin.symbol &&
+        coin.name &&
+        coin.network &&
+        coin.launchTime
+    );
+  }
+
+  private async saveNewCoins(coins: CoinData[]): Promise<number> {
+    let savedCount = 0;
+    
     for (const coinData of coins) {
       try {
         const existingCoin = await Coin.findOne({
@@ -109,21 +165,30 @@ export class MonitoringService {
         if (!existingCoin) {
           const coin = new Coin(coinData);
           await coin.save();
+          savedCount++;
           logger.info(
-            `🆕 New coin saved: ${coinData.symbol} (${coinData.network})`
+            `🆕 New coin saved: ${coinData.symbol} (${coinData.network}) - Contract: ${coinData.contractAddress}`
+          );
+        } else {
+          logger.info(
+            `⏭️ Coin already exists: ${coinData.symbol} (${coinData.network})`
           );
         }
       } catch (error) {
         logger.error(`❌ Error saving coin ${coinData.symbol}:`, error);
       }
     }
+    
+    return savedCount;
   }
 
   async monitorNews(): Promise<void> {
     logger.info("📰 Starting enhanced crypto news monitoring...");
 
     try {
-      const newsResult = await this.enhancedNewsService.getAllNews();
+      const enhancedNewsService = await this.getEnhancedNewsService();
+
+      const newsResult = await enhancedNewsService.getAllNews();
 
       if (newsResult.success && newsResult.data) {
         const { general, sui, combined } = newsResult.data;
@@ -157,7 +222,8 @@ export class MonitoringService {
     logger.info("📰 Starting SUI-specific news monitoring...");
 
     try {
-      const newsResult = await this.enhancedNewsService.getSuiNews();
+      const enhancedNewsService = await this.getEnhancedNewsService();
+      const newsResult = await enhancedNewsService.getSuiNews();
 
       if (newsResult.success && newsResult.data) {
         await this.saveNews(newsResult.data);
@@ -175,7 +241,9 @@ export class MonitoringService {
     logger.info("📰 Starting general crypto news monitoring...");
 
     try {
-      const newsResult = await this.enhancedNewsService.getCryptoPanicNews();
+      const enhancedNewsService = await this.getEnhancedNewsService();
+
+      const newsResult = await enhancedNewsService.getCryptoPanicNews();
 
       if (newsResult.success && newsResult.data) {
         await this.saveNews(newsResult.data);
